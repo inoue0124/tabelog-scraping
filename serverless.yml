@@ -6,6 +6,8 @@ provider:
   runtime: python3.8
   region: ap-northeast-1
   lambdaHashingVersion: 20201221
+  environment:
+    SQS_URL: { Ref: GetUrlRequestQueue }
 
   iam:
     role:
@@ -14,21 +16,60 @@ provider:
           Action:
             - s3:*
           Resource: "arn:aws:s3:::tabelog-scraping-input/*"
+        - Effect: "Allow"
+          Action:
+            - dynamodb:*
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/RstUrl"
+        - Effect: "Allow"
+          Action:
+            - "sqs:*"
+          Resource: "arn:aws:sqs:${opt:region, self:provider.region}:*:get_url_request"
+
 plugins:
   - serverless-python-requirements
 
 functions:
-  hello:
-    handler: handler.hello
+  publish_get_url_request:
+    handler: src/publish_get_url_request.publish_get_url_request
     events:
       - s3:
           bucket: "tabelog-scraping-input"
           event: s3:ObjectCreated:*
           existing: true
+  get_rst_url:
+    handler: src/get_rst_url.handler
+    events:
+      - sqs:
+          arn: { Fn::GetAtt: [GetUrlRequestQueue, Arn] }
+
+  # hello:
+  #   handler: src.handler.hello
 
 resources:
   Resources:
-    S3Bucket:
-      Type: AWS::S3::Bucket
+    # S3Bucket:
+    #   Type: AWS::S3::Bucket
+    #   Properties:
+    #     BucketName: "tabelog-scraping-input"
+    GetUrlRequestQueue:
+      Type: "AWS::SQS::Queue"
       Properties:
-        BucketName: "tabelog-scraping-input"
+        QueueName: "get_url_request"
+
+    RstUrlTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: RstUrl
+        AttributeDefinitions:
+          - AttributeName: url
+            AttributeType: S
+        KeySchema:
+          - AttributeName: url
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+custom:
+  pythonRequirements:
+    pythonBin: python3
