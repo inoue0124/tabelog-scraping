@@ -7,7 +7,8 @@ provider:
   region: ap-northeast-1
   lambdaHashingVersion: 20201221
   environment:
-    SQS_URL: { Ref: GetUrlRequestQueue }
+    GET_URL_REQUEST_SQS_URL: { Ref: GetUrlRequestQueue }
+    SCRAPE_REQUEST_SQS_URL: { Ref: ScrapeRequestQueue }
 
   iam:
     role:
@@ -36,26 +37,32 @@ functions:
           bucket: "tabelog-scraping-input"
           event: s3:ObjectCreated:*
           existing: true
+
   get_rst_url:
     handler: src/get_rst_url.handler
     events:
       - sqs:
           arn: { Fn::GetAtt: [GetUrlRequestQueue, Arn] }
 
-  # hello:
-  #   handler: src.handler.hello
-
 resources:
   Resources:
+    # S3
     # S3Bucket:
     #   Type: AWS::S3::Bucket
     #   Properties:
     #     BucketName: "tabelog-scraping-input"
+
+    # SQS
     GetUrlRequestQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: "get_url_request"
+    ScrapeRequestQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "scrape_request"
 
+    # DynamoDB
     RstUrlTable:
       Type: AWS::DynamoDB::Table
       Properties:
