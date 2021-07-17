@@ -9,20 +9,23 @@ provider:
   environment:
     GET_URL_REQUEST_SQS_URL: { Ref: GetUrlRequestQueue }
     SCRAPE_REQUEST_SQS_URL: { Ref: ScrapeRequestQueue }
-
   iam:
     role:
       statements:
         - Effect: Allow
           Action:
             - s3:*
-          Resource: "arn:aws:s3:::tabelog-scraping-input/*"
+          Resource:
+            - "arn:aws:s3:::tabelog-scraping-input/*"
+            - "arn:aws:s3:::tabelog-scraping-output/*"
+
         - Effect: "Allow"
           Action:
             - dynamodb:*
           Resource:
             - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/TabelogRstUrl"
             - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/TabelogRstData"
+
         - Effect: "Allow"
           Action:
             - "sqs:*"
@@ -54,13 +57,25 @@ functions:
       - sqs:
           arn: { Fn::GetAtt: [ScrapeRequestQueue, Arn] }
 
+  dump_to_csv:
+    handler: src/dump_to_csv.handler
+    events:
+      - http:
+          path: csv
+          method: get
+          cors: true
+
 resources:
   Resources:
     # S3
-    # S3Bucket:
+    # InputBucket:
     #   Type: AWS::S3::Bucket
     #   Properties:
     #     BucketName: "tabelog-scraping-input"
+    OutputBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: "tabelog-scraping-output"
 
     # SQS
     GetUrlRequestQueue:

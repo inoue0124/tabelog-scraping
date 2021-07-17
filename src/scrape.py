@@ -16,7 +16,7 @@ def scrape(url: str):
 
 
 def handler(event, context):
-    # SQSのメッセージからレストラン名を取得
+    # SQSのメッセージからスクレイプ対象のURLを取得
     for record in event['Records']:
         url = json.loads(record['body'])["url"]
 
