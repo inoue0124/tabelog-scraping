@@ -20,11 +20,15 @@ provider:
         - Effect: "Allow"
           Action:
             - dynamodb:*
-          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/RstUrl"
+          Resource:
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/TabelogRstUrl"
+            - "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/TabelogRstData"
         - Effect: "Allow"
           Action:
             - "sqs:*"
-          Resource: "arn:aws:sqs:${opt:region, self:provider.region}:*:get_url_request"
+          Resource:
+            - "arn:aws:sqs:${opt:region, self:provider.region}:*:get_url_request"
+            - "arn:aws:sqs:${opt:region, self:provider.region}:*:scrape_request"
 
 plugins:
   - serverless-python-requirements
@@ -38,11 +42,17 @@ functions:
           event: s3:ObjectCreated:*
           existing: true
 
-  get_rst_url:
-    handler: src/get_rst_url.handler
+  get_url:
+    handler: src/get_url.handler
     events:
       - sqs:
           arn: { Fn::GetAtt: [GetUrlRequestQueue, Arn] }
+
+  scrape:
+    handler: src/scrape.handler
+    events:
+      - sqs:
+          arn: { Fn::GetAtt: [ScrapeRequestQueue, Arn] }
 
 resources:
   Resources:
@@ -63,10 +73,24 @@ resources:
         QueueName: "scrape_request"
 
     # DynamoDB
-    RstUrlTable:
+    TabelogRstUrlTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: RstUrl
+        TableName: TabelogRstUrl
+        AttributeDefinitions:
+          - AttributeName: url
+            AttributeType: S
+        KeySchema:
+          - AttributeName: url
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    TabelogRstDataTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TabelogRstData
         AttributeDefinitions:
           - AttributeName: url
             AttributeType: S
