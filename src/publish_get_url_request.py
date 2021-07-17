@@ -15,8 +15,8 @@ def publish_get_url_request(event, context):
 
     for rst_name in rst_names:
         # SQSへレストランURL取得リクエストを追加
-        response = sqs.send_message(
-            QueueUrl=os.environ['SQS_URL'],
+        sqs.send_message(
+            QueueUrl=os.environ['GET_URL_REQUEST_SQS_URL'],
             DelaySeconds=0,
             MessageBody=(json.dumps({"name": rst_name}))
         )
