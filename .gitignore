@@ -21,3 +21,6 @@ __pycache__/
 # Serverless directories
 .serverless
 node_modules
+
+# Mac
+*.DS_Store
