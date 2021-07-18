@@ -37,13 +37,21 @@ plugins:
   - serverless-python-requirements
 
 functions:
-  publish_get_url_request:
-    handler: src/publish_get_url_request.publish_get_url_request
+  publish_get_url_request_by_s3:
+    handler: src/publish_get_url_request_by_s3.handler
     events:
       - s3:
           bucket: "tabelog-scraping-input"
           event: s3:ObjectCreated:*
           existing: true
+
+  publish_get_url_request_by_http:
+    handler: src/publish_get_url_request_by_http.handler
+    events:
+      - http:
+          path: url
+          method: get
+          cors: true
 
   get_url:
     handler: src/get_url.handler
@@ -56,6 +64,14 @@ functions:
     events:
       - sqs:
           arn: { Fn::GetAtt: [ScrapeRequestQueue, Arn] }
+
+  publish_scrape_request:
+    handler: src/publish_scrape_request.handler
+    events:
+      - http:
+          path: scrape
+          method: get
+          cors: true
 
   dump_to_csv:
     handler: src/dump_to_csv.handler
@@ -101,7 +117,6 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-
     TabelogRstDataTable:
       Type: AWS::DynamoDB::Table
       Properties:

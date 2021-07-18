@@ -5,12 +5,12 @@ import boto3
 s3 = boto3.client('s3')
 sqs = boto3.client('sqs')
 
+bucket_name = "tabelog-scraping-input"
+key = "test.csv"
 
-def publish_get_url_request(event, context):
-    bucket = event["Records"][0]["s3"]["bucket"]["name"]
-    key = event["Records"][0]["s3"]["object"]["key"]
 
-    response = s3.get_object(Bucket=bucket, Key=key)
+def handler(event, context):
+    response = s3.get_object(Bucket=bucket_name, Key=key)
     rst_names = response['Body'].read().decode('utf-8').splitlines()
 
     for rst_name in rst_names:
@@ -20,4 +20,10 @@ def publish_get_url_request(event, context):
             DelaySeconds=0,
             MessageBody=(json.dumps({"name": rst_name}))
         )
-    return
+
+    # httpレスポンス
+    response = {
+        "statusCode": 200,
+        "body": "success"
+    }
+    return response
