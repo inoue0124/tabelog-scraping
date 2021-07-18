@@ -39,42 +39,43 @@ plugins:
 functions:
   publish_get_url_request_by_s3:
     handler: src/publish_get_url_request_by_s3.handler
+    timeout: 120
     events:
       - s3:
           bucket: "tabelog-scraping-input"
           event: s3:ObjectCreated:*
           existing: true
-
   publish_get_url_request_by_http:
     handler: src/publish_get_url_request_by_http.handler
+    timeout: 120
     events:
       - http:
           path: url
           method: get
           cors: true
-
   get_url:
     handler: src/get_url.handler
+    timeout: 60
     events:
       - sqs:
           arn: { Fn::GetAtt: [GetUrlRequestQueue, Arn] }
-
   scrape:
     handler: src/scrape.handler
+    timeout: 60
     events:
       - sqs:
           arn: { Fn::GetAtt: [ScrapeRequestQueue, Arn] }
-
   publish_scrape_request:
     handler: src/publish_scrape_request.handler
+    timeout: 120
     events:
       - http:
           path: scrape
           method: get
           cors: true
-
   dump_to_csv:
     handler: src/dump_to_csv.handler
+    timeout: 120
     events:
       - http:
           path: csv
@@ -84,10 +85,10 @@ functions:
 resources:
   Resources:
     # S3
-    # InputBucket:
-    #   Type: AWS::S3::Bucket
-    #   Properties:
-    #     BucketName: "tabelog-scraping-input"
+    InputBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: "tabelog-scraping-input"
     OutputBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -115,8 +116,8 @@ resources:
           - AttributeName: url
             KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
     TabelogRstDataTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -128,8 +129,8 @@ resources:
           - AttributeName: url
             KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
 
 custom:
   pythonRequirements:

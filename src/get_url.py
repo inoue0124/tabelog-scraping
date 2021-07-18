@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
@@ -13,7 +14,7 @@ def get_url(rst_name: str) -> str:
     query: str = urllib.parse.urlencode({'sw': rst_name})
     base_url: str = 'https://tabelog.com/rstLst/?'
     search_url: str = base_url + query
-    html = BeautifulSoup(requests.get(search_url).content, 'html.parser')
+    html = BeautifulSoup(requests.get(search_url).content, 'html5lib')
     url_list = [x.get('href')
                 for x in html.find_all('a', class_='list-rst__rst-name-target')]
     try:
@@ -25,7 +26,7 @@ def get_url(rst_name: str) -> str:
 
 def handler(event, context):
     # SQSのメッセージからレストラン名を取得
-    for record in event['Records']:
+    for i, record in enumerate(event['Records']):
         rst_name = json.loads(record['body'])["name"]
         url = get_url(rst_name)
 
@@ -41,4 +42,8 @@ def handler(event, context):
             DelaySeconds=0,
             MessageBody=(json.dumps({"url": url}))
         )
+
+        # 次のリクエストをする前に少し待機する
+        if i != len(event['Records']) - 1:
+            time.sleep(2)
     return
