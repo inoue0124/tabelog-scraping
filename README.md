@@ -28,3 +28,12 @@ sls deploy
 ```
 sls remove
 ```
+
+# For local
+以下の手順でAWSやserverless framework全く関係なしでローカル実行できる。
+
+```
+cd local
+pip3 install -r ../requirements.txt
+python3 main.py ../doc/test.csv
+```
