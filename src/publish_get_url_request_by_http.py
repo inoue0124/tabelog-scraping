@@ -5,20 +5,24 @@ import boto3
 s3 = boto3.client('s3')
 sqs = boto3.client('sqs')
 
-bucket_name = "tabelog-scraping-input"
-key = "test.csv"
-
 
 def handler(event, context):
-    response = s3.get_object(Bucket=bucket_name, Key=key)
+    bucket = os.environ['S3_INPUT_BUCKET']
+    key = "test.csv"
+
+    response = s3.get_object(Bucket=bucket, Key=key)
     rst_names = response['Body'].read().decode('utf-8').splitlines()
 
     for rst_name in rst_names:
         # SQSへレストランURL取得リクエストを追加
+        request = {
+            "name": rst_name,
+            "use_cache": False
+        }
         sqs.send_message(
             QueueUrl=os.environ['GET_URL_REQUEST_SQS_URL'],
             DelaySeconds=0,
-            MessageBody=(json.dumps({"name": rst_name}))
+            MessageBody=(json.dumps(request))
         )
 
     # httpレスポンス

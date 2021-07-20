@@ -1,17 +1,15 @@
+import os
+import datetime
 import csv
 import boto3
 
 s3 = boto3.resource('s3')
+s3_client = boto3.client('s3')
 dynamodb = boto3.resource("dynamodb")
 
-bucket_name = "tabelog-scraping-output"
-key = "scraping-result.csv"
-local_path = "/tmp/scraping-result.csv"
-table_name = "TabelogRstData"
 
-
-def get_data():
-    table = dynamodb.Table("TabelogRstData")
+def scan_all():
+    table = dynamodb.Table(os.environ['DB_RST_DATA_TABLE'])
     response = table.scan()
     data = response['Items']
     # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
@@ -21,9 +19,7 @@ def get_data():
     return data
 
 
-def handler(event, context):
-    # DynamoDBからデータを取得
-    data = get_data()
+def dump_to_csv(data: dict, file_path: str):
     fieldnames = ["URL",
                   "店名",
                   "公式マーク有無",
@@ -36,6 +32,12 @@ def handler(event, context):
                   "予算（夜）",
                   "定休日",
                   "テイクアウト実施有無",
+                  "PRタイトル",
+                  "PRコメント",
+                  "こだわり",
+                  "感染症対策",
+                  "コース料金",
+                  "クーポン",
                   "予約・問い合わせ",
                   "予約可否",
                   "住所",
@@ -68,8 +70,7 @@ def handler(event, context):
                   "備考",
                   "Google広告表示有無"]
 
-    # 取得データよりcsvファイルを作成
-    with open(local_path, 'w') as f:
+    with open(file_path, 'w') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for da in data:
@@ -85,6 +86,12 @@ def handler(event, context):
                              "予算（夜）": da["budget_lunch"],
                              "定休日": da["regular_holiday"],
                              "テイクアウト実施有無": da["is_serve_takeout"],
+                             "PRタイトル": da["pr_title"],
+                             "PRコメント": da["pr-comment"],
+                             "こだわり": da["kodawari"],
+                             "感染症対策": da["hygiene"],
+                             "コース料金": da["top-course"],
+                             "クーポン": da["coupon"],
                              "予約・問い合わせ": da["booking_inquiry"],
                              "予約可否": da["booking_availability"],
                              "住所": da["address"],
@@ -117,13 +124,29 @@ def handler(event, context):
                              "備考": da["other"],
                              "Google広告表示有無": da["has_google_ad"]})
 
+
+def handler(event, context):
+    LOCAL_FILE_PATH = "/tmp/scraping-result.csv"
+
+    # DynamoDBからデータを取得してcsvを生成
+    data = scan_all()
+    dump_to_csv(data=data, file_path=LOCAL_FILE_PATH)
+
     # S3にアップロード
-    bucket = s3.Bucket(bucket_name)
-    bucket.upload_file(local_path, key)
+    bucket = s3.Bucket(os.environ['S3_OUTPUT_BUCKET'])
+    key = f"scraping-result_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    bucket.upload_file(LOCAL_FILE_PATH, key)
+
+    # 署名付きURLを取得
+    url = s3_client.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={'Bucket': os.environ['S3_OUTPUT_BUCKET'], 'Key': key},
+        ExpiresIn=3600,
+        HttpMethod='GET')
 
     # httpレスポンス
     response = {
         "statusCode": 200,
-        "body": local_path
+        "body": url
     }
     return response
