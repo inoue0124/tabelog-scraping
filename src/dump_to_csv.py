@@ -19,7 +19,7 @@ def scan_all():
     return data
 
 
-def dump_to_csv(data: dict, file_path: str):
+def dump_to_csv(data: list, file_path: str):
     fieldnames = ["URL",
                   "店名",
                   "公式マーク有無",
