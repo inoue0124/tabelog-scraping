@@ -15,9 +15,13 @@ def handler(event, context):
 
     for rst_name in rst_names:
         # SQSへレストランURL取得リクエストを追加
+        request = {
+            "name": rst_name,
+            "use_cache": True
+        }
         sqs.send_message(
             QueueUrl=os.environ['GET_URL_REQUEST_SQS_URL'],
             DelaySeconds=0,
-            MessageBody=(json.dumps({"name": rst_name}))
+            MessageBody=(json.dumps(request))
         )
     return

@@ -7,8 +7,8 @@ dynamodb = boto3.resource("dynamodb")
 sqs = boto3.client('sqs')
 
 
-def get_data():
-    table = dynamodb.Table("TabelogRstUrl")
+def scan_all():
+    table = dynamodb.Table(os.environ['DB_RST_URL_TABLE'])
     response = table.scan()
     data = response['Items']
     # レスポンスに LastEvaluatedKey が含まれなくなるまでループ処理を実行する
@@ -20,15 +20,19 @@ def get_data():
 
 def handler(event, context):
     # DynamoDBからURLを取得
-    data = get_data()
+    data = scan_all()
 
     for da in data:
         url = da['url']
         # SQSへスクレイピングリクエストを追加
+        request = {
+            "url": url,
+            "use_cache": False
+        }
         sqs.send_message(
             QueueUrl=os.environ['SCRAPE_REQUEST_SQS_URL'],
             DelaySeconds=0,
-            MessageBody=(json.dumps({"url": url}))
+            MessageBody=(json.dumps(request))
         )
 
     # httpレスポンス

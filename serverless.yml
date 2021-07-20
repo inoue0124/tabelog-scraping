@@ -7,8 +7,13 @@ provider:
   region: ap-northeast-1
   lambdaHashingVersion: 20201221
   environment:
+    TZ: Asia/Tokyo
     GET_URL_REQUEST_SQS_URL: { Ref: GetUrlRequestQueue }
     SCRAPE_REQUEST_SQS_URL: { Ref: ScrapeRequestQueue }
+    S3_INPUT_BUCKET: tabelog-scraping-input
+    S3_OUTPUT_BUCKET: tabelog-scraping-output
+    DB_RST_URL_TABLE: TabelogRstUrl
+    DB_RST_DATA_TABLE: TabelogRstData
   iam:
     role:
       statements:
@@ -16,8 +21,8 @@ provider:
           Action:
             - s3:*
           Resource:
-            - "arn:aws:s3:::tabelog-scraping-input/*"
-            - "arn:aws:s3:::tabelog-scraping-output/*"
+            - "arn:aws:s3:::${self:provider.environment.S3_INPUT_BUCKET}/*"
+            - "arn:aws:s3:::${self:provider.environment.S3_OUTPUT_BUCKET}/*"
 
         - Effect: "Allow"
           Action:
@@ -42,7 +47,7 @@ functions:
     timeout: 120
     events:
       - s3:
-          bucket: "tabelog-scraping-input"
+          bucket: ${self:provider.environment.S3_INPUT_BUCKET}
           event: s3:ObjectCreated:*
           existing: true
   publish_get_url_request_by_http:
@@ -88,32 +93,38 @@ resources:
     InputBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: "tabelog-scraping-input"
+        BucketName: ${self:provider.environment.S3_INPUT_BUCKET}
     OutputBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: "tabelog-scraping-output"
+        BucketName: ${self:provider.environment.S3_OUTPUT_BUCKET}
 
     # SQS
     GetUrlRequestQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: "get_url_request"
+        MessageRetentionPeriod: 300
+        ReceiveMessageWaitTimeSeconds: 20
+        VisibilityTimeout: 60
     ScrapeRequestQueue:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: "scrape_request"
+        MessageRetentionPeriod: 300
+        ReceiveMessageWaitTimeSeconds: 20
+        VisibilityTimeout: 60
 
     # DynamoDB
     TabelogRstUrlTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: TabelogRstUrl
+        TableName: ${self:provider.environment.DB_RST_URL_TABLE}
         AttributeDefinitions:
-          - AttributeName: url
+          - AttributeName: input_rst_name
             AttributeType: S
         KeySchema:
-          - AttributeName: url
+          - AttributeName: input_rst_name
             KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 5
@@ -121,7 +132,7 @@ resources:
     TabelogRstDataTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: TabelogRstData
+        TableName: ${self:provider.environment.DB_RST_DATA_TABLE}
         AttributeDefinitions:
           - AttributeName: url
             AttributeType: S
